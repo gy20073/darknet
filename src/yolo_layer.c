@@ -339,6 +339,8 @@ int get_yolo_detections(layer l, int w, int h, int netw, int neth, float thresh,
         }
     }
     correct_yolo_boxes(dets, count, w, h, netw, neth, relative);
+
+
     return count;
 }
 
@@ -372,3 +374,24 @@ void backward_yolo_layer_gpu(const layer l, network net)
 }
 #endif
 
+
+int get_yolo_logits(network *net, int *batch, int *w, int *h, int *n, int *classp5, float** data){
+    int i;
+    int yolo_i = 0;
+    for(i = 0; i < net->n; ++i){
+        layer l = net->layers[i];
+        // debug
+        //printf("layer %d, type %d, YOLO id is %d\n", i, l.type, YOLO);
+
+        if(l.type == YOLO){
+            batch[yolo_i] = l.batch;
+            w[yolo_i] = l.w;
+            h[yolo_i] = l.h;
+            n[yolo_i] = l.n;
+            classp5[yolo_i] = l.classes + 4 + 1;
+            data[yolo_i] = net->layers[i].output;
+            yolo_i ++;
+        }
+    }
+    return yolo_i;
+}
