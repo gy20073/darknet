@@ -507,14 +507,14 @@ float *network_predict(network *net, float *input)
     return out;
 }
 
-int num_detections(network *net, float thresh)
+int num_detections(network *net, float thresh, int ibatch)
 {
     int i;
     int s = 0;
     for(i = 0; i < net->n; ++i){
         layer l = net->layers[i];
         if(l.type == YOLO){
-            s += yolo_num_detections(l, thresh);
+            s += yolo_num_detections(l, thresh, ibatch);
         }
         if(l.type == DETECTION || l.type == REGION){
             s += l.w*l.h*l.n;
@@ -523,11 +523,11 @@ int num_detections(network *net, float thresh)
     return s;
 }
 
-detection *make_network_boxes(network *net, float thresh, int *num)
+detection *make_network_boxes(network *net, float thresh, int *num, int ibatch)
 {
     layer l = net->layers[net->n - 1];
     int i;
-    int nboxes = num_detections(net, thresh);
+    int nboxes = num_detections(net, thresh, ibatch);
     if(num) *num = nboxes;
     detection *dets = calloc(nboxes, sizeof(detection));
     for(i = 0; i < nboxes; ++i){
@@ -539,13 +539,13 @@ detection *make_network_boxes(network *net, float thresh, int *num)
     return dets;
 }
 
-void fill_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, detection *dets)
+void fill_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, detection *dets, int ibatch)
 {
     int j;
     for(j = 0; j < net->n; ++j){
         layer l = net->layers[j];
         if(l.type == YOLO){
-            int count = get_yolo_detections(l, w, h, net->w, net->h, thresh, map, relative, dets);
+            int count = get_yolo_detections(l, w, h, net->w, net->h, thresh, map, relative, dets, ibatch);
             dets += count;
         }
         if(l.type == REGION){
@@ -561,8 +561,15 @@ void fill_network_boxes(network *net, int w, int h, float thresh, float hier, in
 
 detection *get_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num)
 {
-    detection *dets = make_network_boxes(net, thresh, num);
-    fill_network_boxes(net, w, h, thresh, hier, map, relative, dets);
+    detection *dets = make_network_boxes(net, thresh, num, 0);
+    fill_network_boxes(net, w, h, thresh, hier, map, relative, dets, 0);
+    return dets;
+}
+
+detection *get_network_boxes_ibatch(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num, int ibatch)
+{
+    detection *dets = make_network_boxes(net, thresh, num, ibatch);
+    fill_network_boxes(net, w, h, thresh, hier, map, relative, dets, ibatch);
     return dets;
 }
 
@@ -582,6 +589,24 @@ float *network_predict_image(network *net, image im)
     set_batch_network(net, 1);
     float *p = network_predict(net, imr.data);
     free_image(imr);
+    return p;
+}
+
+float *network_predict_image_batch(network *net, image im, int batch_size)
+{
+    float* imr_data = calloc(batch_size * net->w * net->h * im.c, sizeof(float));
+    int i;
+    for(i=0; i<batch_size; ++i){
+        image this_image = make_empty_image(im.w,im.h,im.c);
+        this_image.data = im.data + i*im.w*im.h*im.c;
+        image imr = letterbox_image(this_image, net->w, net->h);
+        memcpy(imr_data+i * net->w * net->h * im.c, imr.data, imr.w*imr.h*imr.c*sizeof(float));
+        free_image(imr);
+    }
+    printf("batch size is: %d\n", batch_size);
+    set_batch_network(net, batch_size);
+    float *p = network_predict(net, imr_data);
+    free(imr_data);
     return p;
 }
 

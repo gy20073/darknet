@@ -685,7 +685,7 @@ void load_weights_upto(network *net, char *filename, int start, int cutoff);
 
 void zero_objectness(layer l);
 void get_region_detections(layer l, int w, int h, int netw, int neth, float thresh, int *map, float tree_thresh, int relative, detection *dets);
-int get_yolo_detections(layer l, int w, int h, int netw, int neth, float thresh, int *map, int relative, detection *dets);
+int get_yolo_detections(layer l, int w, int h, int netw, int neth, float thresh, int *map, int relative, detection *dets, int ibatch);
 void free_network(network *net);
 void set_batch_network(network *net, int b);
 void set_temp_network(network *net, float t);
@@ -741,10 +741,14 @@ float *network_predict(network *net, float *input);
 int network_width(network *net);
 int network_height(network *net);
 float *network_predict_image(network *net, image im);
+// added by Yang
+float *network_predict_image_batch(network *net, image im, int batch_size);
 void network_detect(network *net, image im, float thresh, float hier_thresh, float nms, detection *dets);
 detection *get_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num);
 // added by Yang
 int get_yolo_logits(network *net, int *batch, int *w, int *h, int *n, int *classp5, float** data);
+detection *get_network_boxes_ibatch(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num, int ibatch);
+
 void free_detections(detection *dets, int n);
 
 void reset_network_state(network *net, int b);

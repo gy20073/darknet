@@ -272,14 +272,14 @@ void correct_yolo_boxes(detection *dets, int n, int w, int h, int netw, int neth
     }
 }
 
-int yolo_num_detections(layer l, float thresh)
+int yolo_num_detections(layer l, float thresh, int ibatch)
 {
     int i, n;
     int count = 0;
     for (i = 0; i < l.w*l.h; ++i){
         for(n = 0; n < l.n; ++n){
             int obj_index  = entry_index(l, 0, n*l.w*l.h + i, 4);
-            if(l.output[obj_index] > thresh){
+            if(l.output[l.outputs*ibatch + obj_index] > thresh){
                 ++count;
             }
         }
@@ -313,11 +313,11 @@ void avg_flipped_yolo(layer l)
     }
 }
 
-int get_yolo_detections(layer l, int w, int h, int netw, int neth, float thresh, int *map, int relative, detection *dets)
+int get_yolo_detections(layer l, int w, int h, int netw, int neth, float thresh, int *map, int relative, detection *dets, int ibatch)
 {
     int i,j,n;
-    float *predictions = l.output;
-    if (l.batch == 2) avg_flipped_yolo(l);
+    float *predictions = l.output + ibatch*l.outputs;
+    //if (l.batch == 2) avg_flipped_yolo(l);
     int count = 0;
     for (i = 0; i < l.w*l.h; ++i){
         int row = i / l.w;
