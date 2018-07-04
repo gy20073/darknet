@@ -599,11 +599,13 @@ float *network_predict_image_batch(network *net, image im, int batch_size)
     for(i=0; i<batch_size; ++i){
         image this_image = make_empty_image(im.w,im.h,im.c);
         this_image.data = im.data + i*im.w*im.h*im.c;
-        image imr = letterbox_image(this_image, net->w, net->h);
-        memcpy(imr_data+i * net->w * net->h * im.c, imr.data, imr.w*imr.h*imr.c*sizeof(float));
-        free_image(imr);
+
+        image boxed = make_empty_image(net->w, net->h, im.c);
+        boxed.data = imr_data + i*net->w*net->h*im.c;
+        fill_image(boxed, .5);
+        embed_image(this_image, boxed, (net->w-im.w)/2, (net->h-im.h)/2);
     }
-    printf("batch size is: %d\n", batch_size);
+
     set_batch_network(net, batch_size);
     float *p = network_predict(net, imr_data);
     free(imr_data);
