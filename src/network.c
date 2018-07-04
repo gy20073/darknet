@@ -592,6 +592,28 @@ float *network_predict_image(network *net, image im)
     return p;
 }
 
+image letterbox_image_fast(image im, int w, int h, float* box_data)
+{
+    int new_w = im.w;
+    int new_h = im.h;
+    if (((float)w/im.w) < ((float)h/im.h)) {
+        new_w = w;
+        new_h = (im.h * w)/im.w;
+    } else {
+        new_h = h;
+        new_w = (im.w * h)/im.h;
+    }
+    image resized = resize_image(im, new_w, new_h);
+    image boxed = make_empty_image(w, h, im.c);
+    boxed.data = box_data;
+    fill_image(boxed, .5);
+    //int i;
+    //for(i = 0; i < boxed.w*boxed.h*boxed.c; ++i) boxed.data[i] = 0;
+    embed_image(resized, boxed, (w-new_w)/2, (h-new_h)/2);
+    free_image(resized);
+    return boxed;
+}
+
 float *network_predict_image_batch(network *net, image im, int batch_size)
 {
     float* imr_data = calloc(batch_size * net->w * net->h * im.c, sizeof(float));
@@ -600,10 +622,7 @@ float *network_predict_image_batch(network *net, image im, int batch_size)
         image this_image = make_empty_image(im.w,im.h,im.c);
         this_image.data = im.data + i*im.w*im.h*im.c;
 
-        image boxed = make_empty_image(net->w, net->h, im.c);
-        boxed.data = imr_data + i*net->w*net->h*im.c;
-        fill_image(boxed, .5);
-        embed_image(this_image, boxed, (net->w-im.w)/2, (net->h-im.h)/2);
+        letterbox_image_fast(this_image, net->w, net->h, imr_data + i*net->w*net->h*im.c);
     }
 
     set_batch_network(net, batch_size);
